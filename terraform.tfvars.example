@@ -1,0 +1,26 @@
+# ================================================================
+# terraform.tfvars.example
+# 
+# انسخ هذا الملف إلى terraform.tfvars وعدّل القيم
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# ⚠️ لا ترفع terraform.tfvars على GitHub!
+# ================================================================
+
+# الأساسيات — لازم تعدّلها
+project_id = "your-gcp-project-id"
+region     = "us-east4"
+zone       = "us-east4-a"
+
+# الاسم — prefix لكل الـ resources
+app_name = "shop"
+
+# Database
+db_password     = "ChangeMe123!"
+db_machine_type = "e2-medium"
+
+# Web VMs + Autoscaling
+web_machine_type = "e2-medium"
+min_replicas     = 2
+max_replicas     = 6
+cpu_target       = 0.65

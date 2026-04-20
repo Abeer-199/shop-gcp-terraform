@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>🛒 متجر Shop</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>body { font-family: 'Tahoma', sans-serif; }</style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 to-purple-50 min-h-screen">
+<div id="root"></div>
+<script type="text/babel">
+const API = window.location.origin + '/api';
+
+function App() {
+  const [user, setUser] = React.useState(() => {
+    const saved = sessionStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [view, setView] = React.useState('products');
+  const [products, setProducts] = React.useState([]);
+  const [cart, setCart] = React.useState([]);
+  const [uploads, setUploads] = React.useState([]);
+  const [msg, setMsg] = React.useState('');
+  const [loading, setLoading] = React.useState(true);
+
+  const token = () => user?.token;
+  const showMsg = (m) => { setMsg(m); setTimeout(() => setMsg(''), 4000); };
+  const saveUser = (u) => { setUser(u); sessionStorage.setItem('user', JSON.stringify(u)); };
+  const logout = () => { setUser(null); sessionStorage.removeItem('user'); setCart([]); setView('products'); };
+
+  const loadProducts = () => {
+    fetch(`${API}/products`).then(r => r.json()).then(d => {
+      setProducts(Array.isArray(d) ? d : []);
+      setLoading(false);
+    });
+  };
+
+  const loadUploads = () => {
+    if (!token()) return;
+    fetch(`${API}/my-uploads`, { headers: {Authorization: `Bearer ${token()}`} })
+      .then(r => r.json()).then(d => setUploads(Array.isArray(d) ? d : []));
+  };
+
+  React.useEffect(() => { loadProducts(); }, []);
+  React.useEffect(() => { if (view === 'uploads') loadUploads(); }, [view, user]);
+
+  const addToCart = (p) => {
+    const existing = cart.find(c => c.product_id === p.id);
+    if (existing) setCart(cart.map(c => c.product_id === p.id ? {...c, quantity: c.quantity+1} : c));
+    else setCart([...cart, {product_id: p.id, name: p.name, price: p.price, quantity: 1}]);
+    showMsg(`✅ تمت إضافة ${p.name}`);
+  };
+
+  const register = async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const r = await fetch(`${API}/register`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name: f.name.value, email: f.email.value, password: f.password.value})
+    });
+    const d = await r.json();
+    if (r.ok) { saveUser({id: d.user_id, name: d.name, token: d.token}); showMsg(`🎉 مرحباً ${d.name}!`); setView('products'); }
+    else showMsg('❌ ' + d.detail);
+  };
+
+  const login = async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const r = await fetch(`${API}/login`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email: f.email.value, password: f.password.value})
+    });
+    const d = await r.json();
+    if (r.ok) { saveUser({id: d.user_id, name: d.name, token: d.token}); showMsg(`👋 أهلاً ${d.name}!`); setView('products'); }
+    else showMsg('❌ ' + d.detail);
+  };
+
+  const checkout = async () => {
+    if (!user) { setView('login'); showMsg('❌ سجّل دخولك أولاً'); return; }
+    if (cart.length === 0) { showMsg('❌ السلة فارغة'); return; }
+    const r = await fetch(`${API}/orders`, {
+      method: 'POST', headers: {'Content-Type': 'application/json', Authorization: `Bearer ${token()}`},
+      body: JSON.stringify({items: cart.map(c => ({product_id: c.product_id, quantity: c.quantity}))})
+    });
+    const d = await r.json();
+    if (r.ok) { showMsg(`🎉 تم الطلب #${d.order_id}! المبلغ: ${d.total} ر.س`); setCart([]); loadProducts(); }
+    else showMsg('❌ ' + d.detail);
+  };
+
+  const uploadFile = async (e) => {
+    e.preventDefault();
+    const file = e.target.file.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch(`${API}/upload`, {
+      method: 'POST', headers: {Authorization: `Bearer ${token()}`}, body: fd
+    });
+    const d = await r.json();
+    if (r.ok) { showMsg(`✅ تم رفع ${d.file_name}`); e.target.reset(); loadUploads(); }
+    else showMsg('❌ ' + (d.detail || 'فشل الرفع'));
+  };
+
+  const deleteUpload = async (id) => {
+    if (!confirm('حذف الملف؟')) return;
+    const r = await fetch(`${API}/uploads/${id}`, { method: 'DELETE', headers: {Authorization: `Bearer ${token()}`} });
+    if (r.ok) { showMsg('🗑️ تم الحذف'); loadUploads(); }
+  };
+
+  const total = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+  const formatSize = (b) => b < 1024 ? `${b} B` : b < 1048576 ? `${(b/1024).toFixed(1)} KB` : `${(b/1048576).toFixed(1)} MB`;
+
+  return (
+    <div className="container mx-auto p-4 max-w-6xl">
+      <header className="bg-white rounded-2xl shadow-lg p-6 mb-6 flex justify-between items-center flex-wrap gap-3">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">🛒 متجر Shop</h1>
+        <div className="flex gap-2 items-center flex-wrap">
+          <button onClick={() => setView('products')} className={`px-3 py-2 rounded-lg ${view==='products'?'bg-indigo-100 text-indigo-700':'text-gray-600'}`}>المنتجات</button>
+          {user && <button onClick={() => setView('uploads')} className={`px-3 py-2 rounded-lg ${view==='uploads'?'bg-indigo-100 text-indigo-700':'text-gray-600'}`}>📎 ملفاتي</button>}
+          {user ? (
+            <>
+              <span className="text-gray-700 px-3">👋 {user.name}</span>
+              <button onClick={logout} className="text-red-500 hover:underline px-3">خروج</button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setView('login')} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">دخول</button>
+              <button onClick={() => setView('register')} className="px-4 py-2 border-2 border-indigo-600 text-indigo-600 rounded-lg">تسجيل</button>
+            </>
+          )}
+          <button onClick={() => setView('cart')} className="relative px-4 py-2 bg-purple-600 text-white rounded-lg">
+            🛒 السلة
+            {cart.length > 0 && <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">{cart.reduce((s,c)=>s+c.quantity,0)}</span>}
+          </button>
+        </div>
+      </header>
+
+      {msg && <div className="bg-white border-r-4 border-indigo-500 shadow-md rounded-lg p-4 mb-4 animate-pulse">{msg}</div>}
+
+      {view === 'products' && (
+        <div>
+          <h2 className="text-2xl font-bold mb-4">🛍️ المنتجات</h2>
+          {loading ? <p className="text-center py-12">⏳</p> : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {products.map(p => (
+                <div key={p.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition">
+                  {p.image_url && <img src={p.image_url} alt={p.name} className="w-full h-48 object-contain bg-gray-50"/>}
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold mb-2">{p.name}</h3>
+                    <p className="text-gray-600 text-sm mb-3">{p.description}</p>
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-2xl font-bold text-indigo-600">{p.price} ر.س</span>
+                      <span className="text-sm px-3 py-1 rounded-full bg-green-100 text-green-700">📦 {p.stock}</span>
+                    </div>
+                    <button onClick={() => addToCart(p)} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-bold">أضف للسلة +</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {view === 'cart' && (
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <h2 className="text-2xl font-bold mb-4">🛒 سلة التسوق</h2>
+          {cart.length === 0 ? <p className="text-center py-8 text-gray-500">السلة فارغة</p> : (
+            <>
+              {cart.map(c => (
+                <div key={c.product_id} className="flex justify-between items-center border-b py-3">
+                  <span className="font-bold">{c.name}</span>
+                  <div className="flex items-center gap-3">
+                    <span>{c.quantity} × {c.price} = <strong>{c.quantity*c.price} ر.س</strong></span>
+                    <button onClick={() => setCart(cart.filter(x => x.product_id !== c.product_id))} className="text-red-500">حذف</button>
+                  </div>
+                </div>
+              ))}
+              <div className="flex justify-between items-center mt-6 pt-4 border-t-2">
+                <span className="text-xl font-bold">الإجمالي:</span>
+                <span className="text-2xl font-bold text-indigo-600">{total.toFixed(2)} ر.س</span>
+              </div>
+              <button onClick={checkout} className="w-full mt-6 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-lg font-bold text-lg">✅ إتمام الطلب</button>
+            </>
+          )}
+        </div>
+      )}
+
+      {view === 'uploads' && user && (
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <h2 className="text-2xl font-bold mb-4">📎 ملفاتي</h2>
+          <form onSubmit={uploadFile} className="bg-indigo-50 rounded-xl p-4 mb-6 flex gap-3 items-center flex-wrap">
+            <input name="file" type="file" required className="flex-1 min-w-[200px] p-2 bg-white rounded-lg"/>
+            <button type="submit" className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-bold">📤 رفع</button>
+          </form>
+          {uploads.length === 0 ? <p className="text-center py-8 text-gray-500">لا يوجد ملفات بعد</p> : (
+            <div className="space-y-3">
+              {uploads.map(u => (
+                <div key={u.id} className="flex justify-between items-center border rounded-lg p-4 hover:bg-gray-50">
+                  <div>
+                    <div className="font-bold">📄 {u.file_name}</div>
+                    <div className="text-sm text-gray-500">{formatSize(u.file_size)} · {new Date(u.uploaded_at).toLocaleString('ar')}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <a href={u.download_url} target="_blank" className="px-4 py-2 bg-indigo-600 text-white rounded-lg">⬇️ تحميل</a>
+                    <button onClick={() => deleteUpload(u.id)} className="px-4 py-2 bg-red-500 text-white rounded-lg">🗑️</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {view === 'login' && (
+        <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg p-8">
+          <h2 className="text-2xl font-bold mb-6 text-center">🔐 دخول</h2>
+          <form onSubmit={login} className="space-y-4">
+            <input name="email" type="email" placeholder="الإيميل" required className="w-full px-4 py-3 border rounded-lg"/>
+            <input name="password" type="password" placeholder="كلمة المرور" required className="w-full px-4 py-3 border rounded-lg"/>
+            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold">دخول</button>
+          </form>
+          <p className="text-center mt-4">ما عندك حساب؟ <button onClick={() => setView('register')} className="text-indigo-600 font-bold">سجّل</button></p>
+        </div>
+      )}
+
+      {view === 'register' && (
+        <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg p-8">
+          <h2 className="text-2xl font-bold mb-6 text-center">✨ حساب جديد</h2>
+          <form onSubmit={register} className="space-y-4">
+            <input name="name" placeholder="الاسم" required className="w-full px-4 py-3 border rounded-lg"/>
+            <input name="email" type="email" placeholder="الإيميل" required className="w-full px-4 py-3 border rounded-lg"/>
+            <input name="password" type="password" placeholder="كلمة المرور" required className="w-full px-4 py-3 border rounded-lg"/>
+            <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold">سجّل</button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

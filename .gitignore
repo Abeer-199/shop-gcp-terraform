@@ -1,0 +1,23 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Secrets
+*.key
+*.pem
+credentials.json
+service-account*.json
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
