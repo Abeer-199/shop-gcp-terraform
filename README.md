@@ -162,9 +162,71 @@ terraform destroy
 | IAP | Secure SSH access |
 | IAM | Service accounts |
 
+
 ## 📸 Screenshots
 
+### 🌐 Networking — Multi-VPC with Peering
+
+The project uses two isolated VPCs connected via bidirectional Peering:
+
+![Web VPC Creation](docs/01-web-vpc.png)
+*Web tier VPC (10.0.0.0/16)*
+
+![DB VPC Creation](docs/02-db-vpc.png)
+*Isolated Database VPC (10.1.0.0/16)*
+
+![DB Network Summary](docs/03-db-network-summary.png)
+*Complete DB network: Subnet + Firewalls + Cloud NAT*
+
+![VPC Peering Active](docs/04-vpc-peering-active.png)
+*Bidirectional peering — both directions ACTIVE*
+
+---
+
+### 📦 Cloud Storage
+
+![Private Bucket](docs/05-storage-bucket.png)
+*Private bucket with product SVG images*
+
+---
+
+### 💻 Compute Infrastructure
+
+![Database VM](docs/06-db-vm.png)
+*Database VM with no external IP (internal only: 10.1.1.2)*
+
+![Instance Template](docs/07-instance-template.png)
+*Web VM template with Service Account + Health Check*
+
+![Autoscaling](docs/08-autoscaling.png)
+*Autoscaling configured (2-6 VMs, 65% CPU target)*
+
+![Multi-Zone VMs](docs/09-multi-zone-vms.png)
+*3 Web VMs distributed across zones (us-east4 a/b/c)*
+
+---
+
+### ⚖️ Load Balancer
+
+![Load Balancer Details](docs/10-load-balancer.png)
+*Global HTTP Load Balancer — 2 of 2 backends Healthy*
+
+---
+
+### 🛒 Live Application
+
+![Shop Homepage](docs/11-homepage.png)
+*Deployed e-commerce site accessible via Load Balancer IP*
+
+---
+
+### 💾 Database
+
+![Database Query Results](docs/12-database.png)
+*Users, orders, and products data in MariaDB*
+
 See [docs/](docs/) folder.
+
 
 ## 🎓 Learning Objectives
 
