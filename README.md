@@ -225,7 +225,27 @@ The project uses two isolated VPCs connected via bidirectional Peering:
 ![Database Query Results](docs/12-database.png)
 *Users, orders, and products data in MariaDB*
 
+---
+
+## 📸 Live Demo Screenshots
+
+### File Upload from Web UI
+
+The user successfully uploaded `test.txt` through the **"ملفاتي"** tab.
+The frontend displays a confirmation message immediately after upload.
+
+![Upload page with success message](docs/13-uploads-page-success.png)
+
+### File Persisted in Cloud Storage
+
+The same file is automatically stored in the **private bucket** under
+`user_uploads/user_1/`, demonstrating the end-to-end flow:
+
+![Bucket showing user uploads folder](docs/14-bucket-user-files.png)
+
 See [docs/](docs/) folder.
+
+
 
 
 ## 🎓 Learning Objectives
